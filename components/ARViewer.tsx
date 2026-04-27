@@ -51,6 +51,7 @@ export default function ARViewer({ dish }: { dish: Dish }) {
         `intent://arvr.google.com/scene-viewer/1.0` +
         `?file=${encodeURIComponent(modelUrl)}` +
         `&mode=ar_preferred` +
+        `&resizable=false` +
         `&title=${encodeURIComponent(dish.name)}` +
         `#Intent;scheme=https;` +
         `package=com.google.android.googlequicksearchbox;` +
