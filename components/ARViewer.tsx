@@ -25,7 +25,8 @@ export default function ARViewer({ dish }: { dish: Dish }) {
   const iosLinkRef = useRef<HTMLAnchorElement>(null)
 
   const modelUrl  = `${BASE_URL}${dish.modelPath}`
-  const usdzUrl   = `${BASE_URL}${dish.modelPath.replace(/\.glb$/i, '.usdz')}`
+  // #allowsContentScaling=0 desactiva el pinch-to-scale en iOS Quick Look
+  const usdzUrl   = `${BASE_URL}${dish.modelPath.replace(/\.glb$/i, '.usdz')}#allowsContentScaling=0`
 
   useEffect(() => {
     const ua = navigator.userAgent.toLowerCase()

@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const filePath = path.join(__dirname, '..', 'public', 'models', 'pizzamodel.glb')
-const REAL_WIDTH_CM = 30
+const REAL_WIDTH_CM = 20
 
 await Promise.all([MeshoptDecoder.ready, MeshoptEncoder.ready])
 const io = new NodeIO()
