@@ -32,6 +32,8 @@ export default function ARViewer({ dish }: { dish: Dish }) {
     const ua = navigator.userAgent
     const isAndroid = /android/i.test(ua)
 
+    const isIOS = /iphone|ipad|ipod/i.test(ua)
+
     if (isAndroid) {
       setRedirecting(true)
       const modelAbsoluteUrl = `${BASE_URL}${dish.modelPath}`
@@ -46,6 +48,12 @@ export default function ARViewer({ dish }: { dish: Dish }) {
         `action=android.intent.action.VIEW;` +
         `S.browser_fallback_url=${fallback};end;`
       window.location.href = intentUrl
+    }
+
+    if (isIOS) {
+      setRedirecting(true)
+      const usdzPath = dish.modelPath.replace(/\.glb$/i, '.usdz')
+      window.location.href = `${BASE_URL}${usdzPath}`
     }
   }, [dish])
 
