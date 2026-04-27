@@ -1,5 +1,6 @@
 'use client'
 import Script from 'next/script'
+import { useEffect, useState } from 'react'
 import type { Dish } from '@/lib/dishes'
 
 declare global {
@@ -21,8 +22,32 @@ declare global {
   }
 }
 
+const BASE_URL = 'https://menu-ar-blue.vercel.app'
+
 export default function ARViewer({ dish }: { dish: Dish }) {
+  const [redirecting, setRedirecting] = useState(false)
   const modelSrc = dish.modelPath.startsWith('http') ? dish.modelPath : dish.modelPath
+
+  useEffect(() => {
+    const ua = navigator.userAgent
+    const isAndroid = /android/i.test(ua)
+
+    if (isAndroid) {
+      setRedirecting(true)
+      const modelAbsoluteUrl = `${BASE_URL}${dish.modelPath}`
+      const fallback = encodeURIComponent(window.location.href)
+      const intentUrl =
+        `intent://arvr.google.com/scene-viewer/1.0` +
+        `?file=${encodeURIComponent(modelAbsoluteUrl)}` +
+        `&mode=ar_preferred` +
+        `&title=${encodeURIComponent(dish.name)}` +
+        `#Intent;scheme=https;` +
+        `package=com.google.android.googlequicksearchbox;` +
+        `action=android.intent.action.VIEW;` +
+        `S.browser_fallback_url=${fallback};end;`
+      window.location.href = intentUrl
+    }
+  }, [dish])
 
   return (
     <>
@@ -31,6 +56,30 @@ export default function ARViewer({ dish }: { dish: Dish }) {
         src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"
         strategy="afterInteractive"
       />
+
+      {/* ANDROID REDIRECT SCREEN */}
+      {redirecting && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 999,
+          background: '#080808',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'var(--font-jakarta, Plus Jakarta Sans, sans-serif)',
+          gap: '20px', padding: '40px', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: '64px' }}>📱</div>
+          <h2 style={{
+            fontFamily: '"Bebas Neue", sans-serif',
+            fontSize: '36px', letterSpacing: '0.04em',
+            margin: 0, color: '#f0ece6',
+          }}>ABRIENDO EN AR...</h2>
+          <p style={{ color: '#888', fontSize: '15px', maxWidth: '280px', lineHeight: 1.6 }}>
+            Se está abriendo la cámara con <strong style={{ color: '#ff6b2b' }}>{dish.name}</strong> en 3D.
+          </p>
+          <p style={{ color: '#555', fontSize: '13px' }}>
+            Si no abre automáticamente, asegúrate de tener Google instalado.
+          </p>
+        </div>
+      )}
 
       <div style={{
         position: 'fixed', inset: 0,
