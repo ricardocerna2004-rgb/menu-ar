@@ -8,12 +8,15 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const body = await req.json()
-  const { name, description, price, category, modelPath, restaurantName } = body
+  const { name, description, price, category, modelPath, restaurantName, realWidthCm } = body
 
   if (!name || !modelPath) {
     return NextResponse.json({ error: 'Nombre y modelo son requeridos' }, { status: 400 })
   }
 
-  const dish = createDish({ name, description, price, category, modelPath, restaurantName })
+  const dish = createDish({
+    name, description, price, category, modelPath, restaurantName,
+    realWidthCm: Number(realWidthCm) || 30,
+  })
   return NextResponse.json(dish, { status: 201 })
 }

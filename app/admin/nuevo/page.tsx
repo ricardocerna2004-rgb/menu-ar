@@ -13,6 +13,7 @@ export default function NuevoPlatillo() {
     price: '',
     category: '',
     restaurantName: '',
+    realWidthCm: '30',
   })
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -38,6 +39,7 @@ export default function NuevoPlatillo() {
       setUploading(true)
       const fd = new FormData()
       fd.append('file', file)
+      fd.append('realWidthCm', form.realWidthCm)
       const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd })
       const uploadData = await uploadRes.json()
       if (!uploadRes.ok) throw new Error(uploadData.error)
@@ -160,7 +162,7 @@ export default function NuevoPlatillo() {
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '32px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '32px' }}>
             <div>
               <label style={{ fontSize: '13px', fontWeight: 600, color: '#aaa', marginBottom: '8px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Precio
@@ -172,6 +174,44 @@ export default function NuevoPlatillo() {
                 placeholder="Ej: $189"
                 className="input-field"
               />
+            </div>
+            <div>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: '#aaa', marginBottom: '8px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Tamaño real (cm) *
+              </label>
+              <input
+                name="realWidthCm"
+                type="number"
+                min="5"
+                max="100"
+                value={form.realWidthCm}
+                onChange={handleChange}
+                placeholder="Ej: 30"
+                className="input-field"
+              />
+              <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+                {[
+                  { label: 'Pizza ch.', cm: 20 },
+                  { label: 'Pizza gr.', cm: 32 },
+                  { label: 'Plato sopa', cm: 22 },
+                  { label: 'Ensalada', cm: 25 },
+                  { label: 'Hamburguesa', cm: 15 },
+                  { label: 'Taco', cm: 12 },
+                ].map((p) => (
+                  <button
+                    key={p.cm}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, realWidthCm: String(p.cm) }))}
+                    style={{
+                      fontSize: '10px', padding: '3px 8px', borderRadius: '6px', cursor: 'pointer',
+                      background: form.realWidthCm === String(p.cm) ? 'rgba(255,107,43,0.2)' : '#1d1d1d',
+                      border: `1px solid ${form.realWidthCm === String(p.cm) ? 'rgba(255,107,43,0.5)' : '#2a2a2a'}`,
+                      color: form.realWidthCm === String(p.cm) ? '#ff6b2b' : '#888',
+                      fontFamily: 'inherit', transition: 'all 0.15s',
+                    }}
+                  >{p.label} {p.cm}cm</button>
+                ))}
+              </div>
             </div>
             <div>
               <label style={{ fontSize: '13px', fontWeight: 600, color: '#aaa', marginBottom: '8px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.06em' }}>

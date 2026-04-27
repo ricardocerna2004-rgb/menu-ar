@@ -10,6 +10,7 @@ export interface Dish {
   category: string
   modelPath: string
   restaurantName: string
+  realWidthCm: number   // diámetro/ancho real del platillo en centímetros
   createdAt: string
 }
 

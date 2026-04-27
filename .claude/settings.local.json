@@ -11,7 +11,16 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:57458/ar/pizza-italiana-001)",
       "Bash(git init *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(git branch *)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(gltf-transform optimize *)",
+      "Bash(cp /mnt/c/Users/ricky/Downloads/pizzamodel.usdz \"/mnt/c/Users/ricky/OneDrive/Escritorio/PIZZA QR/public/models/pizzamodel.usdz\")",
+      "Read(//mnt/c/Users/ricky/OneDrive/Escritorio/PIZZA QR/public/**)",
+      "PowerShell(Copy-Item \"C:\\\\Users\\\\ricky\\\\Downloads\\\\pizzamodel.usdz\" \"C:\\\\Users\\\\ricky\\\\OneDrive\\\\Escritorio\\\\PIZZA QR\\\\public\\\\models\\\\pizzamodel.usdz\")",
+      "Bash(node scripts/rescalePizza.mjs)",
+      "Bash(node -e \"const f = require\\('@gltf-transform/functions'\\); console.log\\(Object.keys\\(f\\).filter\\(k => k.toLowerCase\\(\\).includes\\('bound'\\)\\)\\)\")"
     ]
   }
 }
