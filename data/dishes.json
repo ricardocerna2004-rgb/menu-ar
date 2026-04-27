@@ -1,0 +1,12 @@
+[
+  {
+    "id": "pizza-italiana-001",
+    "name": "Pizza Italiana",
+    "description": "Pepperoni, salami italiano, tomate, aceitunas negras, cebolla morada, albahaca fresca, queso mozzarella sobre base de madera.",
+    "price": "$189",
+    "category": "Pizza",
+    "modelPath": "/models/pizzamodel.glb",
+    "restaurantName": "MenuAR Demo",
+    "createdAt": "2026-04-27T00:00:00.000Z"
+  }
+]
