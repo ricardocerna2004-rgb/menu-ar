@@ -40,7 +40,19 @@ usda = usda.replace(
 )
 console.log('📐 Scale 0.1 añadida en Root (→ 20cm)')
 
-// ── 4. Textura PNG → JPEG para reducir peso ──────────────────────────────────
+// ── 4. Reducir precisión decimal del USDA (de 7 a 4 decimales) ──────────────
+// Para visualización de comida 4 decimales = 0.1mm de precisión, más que suficiente
+const beforeSize = Buffer.byteLength(usda, 'utf8')
+usda = usda.replace(/(-?\d+\.\d{5,})/g, (match) => {
+  const n = parseFloat(match)
+  // Conservar precisión extra en números muy pequeños (normales, etc.)
+  if (Math.abs(n) < 0.0001) return parseFloat(n.toFixed(6)).toString()
+  return parseFloat(n.toFixed(4)).toString()
+})
+const afterSize = Buffer.byteLength(usda, 'utf8')
+console.log(`📉 USDA: ${(beforeSize/1024/1024).toFixed(1)}MB → ${(afterSize/1024/1024).toFixed(1)}MB (precisión reducida)`)
+
+// ── 6. Textura PNG → JPEG para reducir peso ──────────────────────────────────
 const texFiles = readdirSync(path.join(workDir, 'textures'))
 const texName  = texFiles[0]
 const texBase  = path.basename(texName, path.extname(texName))
@@ -54,7 +66,7 @@ console.log(`🖼️  Textura: PNG ${(readFileSync(path.join(workDir,'textures',
 // Actualizar referencia en USDA (de .png a .jpg)
 usda = usda.replace(new RegExp(texName.replace('.', '\\.'), 'g'), jpegName)
 
-// ── 5. Reempacar como USDZ (STORED) ─────────────────────────────────────────
+// ── 7. Reempacar como USDZ (STORED) ─────────────────────────────────────────
 const usda_bytes = Buffer.from(usda, 'utf8')
 const zip = new JSZip()
 zip.file('model.usda',             usda_bytes, { compression: 'STORE' })
