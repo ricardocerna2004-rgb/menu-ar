@@ -1,9 +1,9 @@
 /**
- * Parchea el USDA dentro del USDZ:
- *  - Cambia quaternion del mesh de +90°X a -90°X → toppings arriba
- *  - Agrega scale 0.1 en Root → 20cm
- *  - Convierte textura PNG a JPEG → menos peso
- * Reempaca como USDZ válido (todos los archivos STORED, sin comprimir).
+ * Parchea el USDA:
+ *  - Quita la rotación del converter (identity quaternion)
+ *  - Scale 0.125 directo en el mesh → 25cm (geometría raw ~200cm)
+ *  - Reduce precisión decimal para reducir peso
+ *  - Convierte textura PNG → JPEG
  */
 import { readFileSync, writeFileSync, readdirSync } from 'fs'
 import path from 'path'
@@ -12,66 +12,73 @@ import JSZip from 'jszip'
 import sharp from 'sharp'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const srcPath   = path.join('C:\\Users\\ricky\\Downloads\\model (1).usdz')
 const workDir   = path.join(__dirname, '..', 'public', 'models', 'usdz_work')
 const outPath   = path.join(__dirname, '..', 'public', 'models', 'pizzamodel.usdz')
 
-// ── 1. Leer USDA limpio ──────────────────────────────────────────────────────
+// ── 1. Extraer USDA fresco del original ────────────────────────────────────
+import { createWriteStream, mkdirSync } from 'fs'
+import { createRequire } from 'module'
+const require = createRequire(import.meta.url)
+const AdmZip  = require('adm-zip')
+
+const zip = new AdmZip(srcPath)
+mkdirSync(workDir, { recursive: true })
+zip.extractAllTo(workDir, /*overwrite*/true)
+console.log('📦 USDZ extraído')
+
+// ── 2. Leer USDA ───────────────────────────────────────────────────────────
 let usda = readFileSync(path.join(workDir, 'model.usda'), 'utf8')
-console.log(`📄 USDA leído: ${(usda.length / 1024 / 1024).toFixed(1)}MB`)
+console.log(`📄 USDA: ${(usda.length/1024/1024).toFixed(1)}MB`)
 
-// ── 2. Cambiar quaternion del mesh: +90°X → -90°X (toppings arriba) ──────────
-// +90°X = (0.7071067, +0.7071068, 0, 0) → toppings miran al suelo ✗
-// -90°X = (0.7071067, -0.7071068, 0, 0) → toppings miran arriba  ✓
-const before = (usda.match(/quatf xformOp:orient/g) || []).length
+// ── 3. Quitar rotación del converter — dejar identity (1,0,0,0) ────────────
+// El converter añadió +90°X que dejaba la pizza plana pero AL REVÉS.
+// Con identity la pizza queda en su orientación natural del modelo (flat, toppings arriba).
 usda = usda.replace(
-  /quatf xformOp:orient = \(0\.7071067, 0\.7071068, 0\.000000, 0\.000000\)/g,
-  'quatf xformOp:orient = (0.7071067, -0.7071068, 0.000000, 0.000000)'
+  /quatf xformOp:orient = \([^)]+\)/g,
+  'quatf xformOp:orient = (1, 0, 0, 0)'
 )
-const after = (usda.match(/-0\.7071068/g) || []).length
-console.log(`🔄 Quaternions corregidos: ${after} (de ${before} encontrados)`)
+console.log('🔄 Quaternion → identity (sin rotación)')
 
-// ── 3. Añadir scale 0.1 en Root (solo scale, sin rotación extra) ─────────────
+// ── 4. Scale 0.125 en el mesh → 25cm ──────────────────────────────────────
+// Raw geometry = ~200cm, 25cm/200cm = 0.125
+usda = usda.replace(
+  /double3 xformOp:scale = \(1\.000000, 1\.000000, 1\.000000\)/g,
+  'double3 xformOp:scale = (0.125, 0.125, 0.125)'
+)
+console.log('📐 Scale → 0.125 (25cm)')
+
+// ── 5. Root sin transform extra ────────────────────────────────────────────
 usda = usda.replace(
   /def Xform "Root"\s*\{/,
-  `def Xform "Root"
-{
-    float3 xformOp:scale = (0.1, 0.1, 0.1)
-    uniform token[] xformOpOrder = ["xformOp:scale"]`
+  `def Xform "Root"\n{`
 )
-console.log('📐 Scale 0.1 añadida en Root (→ 20cm)')
 
-// ── 4. Reducir precisión decimal del USDA (de 7 a 4 decimales) ──────────────
-// Para visualización de comida 4 decimales = 0.1mm de precisión, más que suficiente
-const beforeSize = Buffer.byteLength(usda, 'utf8')
-usda = usda.replace(/(-?\d+\.\d{5,})/g, (match) => {
-  const n = parseFloat(match)
-  // Conservar precisión extra en números muy pequeños (normales, etc.)
-  if (Math.abs(n) < 0.0001) return parseFloat(n.toFixed(6)).toString()
-  return parseFloat(n.toFixed(4)).toString()
+// ── 6. Reducir precisión decimal (7 cifras → 4) ────────────────────────────
+const before = Buffer.byteLength(usda, 'utf8')
+usda = usda.replace(/(-?\d+\.\d{5,})/g, (m) => {
+  const n = parseFloat(m)
+  return Math.abs(n) < 0.0001
+    ? parseFloat(n.toFixed(6)).toString()
+    : parseFloat(n.toFixed(4)).toString()
 })
-const afterSize = Buffer.byteLength(usda, 'utf8')
-console.log(`📉 USDA: ${(beforeSize/1024/1024).toFixed(1)}MB → ${(afterSize/1024/1024).toFixed(1)}MB (precisión reducida)`)
+const after = Buffer.byteLength(usda, 'utf8')
+console.log(`📉 USDA: ${(before/1024/1024).toFixed(1)}MB → ${(after/1024/1024).toFixed(1)}MB`)
 
-// ── 6. Textura PNG → JPEG para reducir peso ──────────────────────────────────
+// ── 7. Textura PNG → JPEG ──────────────────────────────────────────────────
 const texFiles = readdirSync(path.join(workDir, 'textures'))
 const texName  = texFiles[0]
-const texBase  = path.basename(texName, path.extname(texName))
-const jpegName = texBase + '.jpg'
-
-const jpegBytes = await sharp(path.join(workDir, 'textures', texName))
-  .jpeg({ quality: 82 })
-  .toBuffer()
-console.log(`🖼️  Textura: PNG ${(readFileSync(path.join(workDir,'textures',texName)).length/1024/1024).toFixed(1)}MB → JPEG ${(jpegBytes.length/1024/1024).toFixed(1)}MB`)
-
-// Actualizar referencia en USDA (de .png a .jpg)
+const jpegName = path.basename(texName, path.extname(texName)) + '.jpg'
+const pngBytes = readFileSync(path.join(workDir, 'textures', texName))
+const jpegBytes = await sharp(pngBytes).jpeg({ quality: 82 }).toBuffer()
 usda = usda.replace(new RegExp(texName.replace('.', '\\.'), 'g'), jpegName)
+console.log(`🖼️  Textura: ${(pngBytes.length/1024/1024).toFixed(1)}MB → ${(jpegBytes.length/1024).toFixed(0)}KB`)
 
-// ── 7. Reempacar como USDZ (STORED) ─────────────────────────────────────────
-const usda_bytes = Buffer.from(usda, 'utf8')
-const zip = new JSZip()
-zip.file('model.usda',             usda_bytes, { compression: 'STORE' })
-zip.file(`textures/${jpegName}`,   jpegBytes,  { compression: 'STORE' })
+// ── 8. Reempacar como USDZ válido (todos los archivos STORED) ──────────────
+const jszip = new JSZip()
+jszip.file('model.usda', Buffer.from(usda, 'utf8'), { compression: 'STORE' })
+jszip.file(`textures/${jpegName}`, jpegBytes, { compression: 'STORE' })
 
-const content = await zip.generateAsync({ type: 'nodebuffer', compression: 'STORE' })
+const content = await jszip.generateAsync({ type: 'nodebuffer', compression: 'STORE' })
 writeFileSync(outPath, content)
-console.log(`\n✅ USDZ listo: ${(content.length / 1024 / 1024).toFixed(1)}MB → ${outPath}`)
+console.log(`\n✅ USDZ: ${(content.length/1024/1024).toFixed(1)}MB → ${outPath}`)
