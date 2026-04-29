@@ -173,7 +173,7 @@ diam = max(sx3, sy3)
 print(f"   Tamaño: X={sx3*100:.1f}cm  Y={sy3*100:.1f}cm  Z(grosor)={sz3*100:.1f}cm")
 print(f"   Diámetro actual: {diam*100:.1f}cm")
 
-TARGET_M = 0.25
+TARGET_M = 0.50
 scale_f = TARGET_M / diam if diam > 0 else 1.0
 s_mat = mathutils.Matrix.Scale(scale_f, 4)
 
