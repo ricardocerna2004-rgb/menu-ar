@@ -18,15 +18,20 @@ declare global {
 const BASE_URL = 'https://menu-ar-blue.vercel.app'
 
 type Platform = 'ios' | 'android' | 'desktop'
+type CacheState = 'checking' | 'cached' | 'downloading' | 'ready'
 
 export default function ARViewer({ dish }: { dish: Dish }) {
-  const [platform, setPlatform] = useState<Platform>('desktop')
-  const [tapped, setTapped] = useState(false)
+  const [platform, setPlatform]   = useState<Platform>('desktop')
+  const [tapped, setTapped]       = useState(false)
+  const [cacheState, setCacheState] = useState<CacheState>('checking')
+  const [dlProgress, setDlProgress] = useState(0)
   const iosLinkRef = useRef<HTMLAnchorElement>(null)
 
-  const modelUrl  = `${BASE_URL}${dish.modelPath}`
-  // #allowsContentScaling=0 desactiva el pinch-to-scale en iOS Quick Look
-  const usdzUrl   = `${BASE_URL}${dish.modelPath.replace(/\.glb$/i, '.usdz')}#allowsContentScaling=0`
+  const modelUrl   = `${BASE_URL}${dish.modelPath}`
+  const usdzPath   = dish.modelPath.replace(/\.glb$/i, '.usdz')
+  const usdzUrl    = `${BASE_URL}${usdzPath}#allowsContentScaling=0`
+  // URL sin el hash para fetch/cache (el hash es solo para iOS Quick Look)
+  const usdzFetchUrl = `${BASE_URL}${usdzPath}`
 
   useEffect(() => {
     const ua = navigator.userAgent.toLowerCase()
@@ -34,6 +39,41 @@ export default function ARViewer({ dish }: { dish: Dish }) {
     else if (/iphone|ipad|ipod/.test(ua)) setPlatform('ios')
     else                                   setPlatform('desktop')
   }, [])
+
+  // Verificar caché y pre-descargar si hace falta
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    async function checkAndPrefetch() {
+      // ¿Está en el Service Worker cache?
+      if ('caches' in window) {
+        try {
+          const cache  = await caches.open('menuAR-models-v1')
+          const cached = await cache.match(usdzFetchUrl)
+          if (cached) {
+            setCacheState('cached')
+            return
+          }
+        } catch {}
+      }
+
+      // No está en caché — descargar en background mientras el usuario lee
+      setCacheState('downloading')
+      try {
+        const resp = await fetch(usdzFetchUrl)
+        if ('caches' in window) {
+          const cache = await caches.open('menuAR-models-v1')
+          await cache.put(usdzFetchUrl, resp.clone())
+        }
+        setCacheState('cached')
+      } catch {
+        // Sin conexión o error — usar URL normal igual funciona
+        setCacheState('ready')
+      }
+    }
+
+    checkAndPrefetch()
+  }, [usdzFetchUrl])
 
   function launchAR() {
     setTapped(true)
@@ -143,18 +183,24 @@ export default function ARViewer({ dish }: { dish: Dish }) {
               width: `${80 + i * 40}px`, height: `${80 + i * 40}px`,
               borderRadius: '50%',
               border: '1px solid rgba(255,107,43,' + (0.3 - i * 0.08) + ')',
-              animation: `pulse ${1.2 + i * 0.3}s ease-out infinite`,
+              animation: cacheState === 'downloading' ? 'none' : `pulse ${1.2 + i * 0.3}s ease-out infinite`,
               animationDelay: `${i * 0.2}s`,
+              opacity: cacheState === 'downloading' ? 0.3 : 1,
             }} />
           ))}
           <div style={{
             width: '80px', height: '80px', borderRadius: '50%',
-            background: 'linear-gradient(135deg, #ff6b2b, #ffc947)',
+            background: cacheState === 'cached'
+              ? 'linear-gradient(135deg, #4ade80, #22d3ee)'
+              : 'linear-gradient(135deg, #ff6b2b, #ffc947)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '36px',
-            boxShadow: '0 0 40px rgba(255,107,43,0.4)',
+            boxShadow: cacheState === 'cached'
+              ? '0 0 40px rgba(74,222,128,0.4)'
+              : '0 0 40px rgba(255,107,43,0.4)',
+            transition: 'all 0.4s ease',
           }}>
-            {tapped ? '⏳' : '📱'}
+            {tapped ? '⏳' : cacheState === 'downloading' ? '⬇️' : cacheState === 'cached' ? '⚡' : '📱'}
           </div>
         </div>
 
@@ -165,7 +211,11 @@ export default function ARViewer({ dish }: { dish: Dish }) {
           margin: '0 0 8px', color: '#f0ece6', textAlign: 'center',
           padding: '0 32px',
         }}>
-          {tapped ? 'ABRIENDO AR...' : 'TOCA PARA VER EN AR'}
+          {tapped
+            ? 'ABRIENDO AR...'
+            : cacheState === 'downloading'
+            ? 'PREPARANDO...'
+            : 'TOCA PARA VER EN AR'}
         </h1>
 
         <p style={{
@@ -174,6 +224,10 @@ export default function ARViewer({ dish }: { dish: Dish }) {
         }}>
           {tapped
             ? `Preparando ${dish.name} en tu cámara`
+            : cacheState === 'downloading'
+            ? 'Descargando modelo 3D en background...'
+            : cacheState === 'cached'
+            ? '⚡ Modelo listo — cargará al instante'
             : 'La pizza aparecerá sobre tu mesa a tamaño real'
           }
         </p>
